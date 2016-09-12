@@ -19,8 +19,10 @@
 using namespace cv;
 
 enum {CM_GRAY, CM_HUE, CM_RGB, CM_HSV, CM_KEYPOINTS};	// color model
-
+enum {CM_RIGHT_UP, CM_RIGHT_DOWN, CM_LEFT_UP, CM_LEFT_DOWN};
 enum {MEANSHIFT, CAMSHIFT}; // method
+enum {HOW_FLOW, HOW_KEYPOINTS};
+enum {DEBUG_MODE_ON, DEBUG_MODE_OFF};
 
 //gclee add
 const int MAX_COUNT = 500;
@@ -32,13 +34,13 @@ const TermCriteria termcrit(TermCriteria::COUNT|TermCriteria::EPS,20,0.03);
 const char escapeKey='k';
 const double frameCount = 0;
 const float thresholdMatchingNN=0.7;
-const unsigned int thresholdGoodMatches=4;
+const unsigned int thresholdGoodMatches=10;
 const unsigned int thresholdGoodMatchesV[]={4,5,6,7,8,9,10};
 const int minHess=250; //2000 -> 500 -> 250
 const int newRoiSize=80; //100
 const static int SENSITIVITY_VALUE = 20; //20 -> 100 -> 120
-const static double SENSITIVITY_MOVE_VALUE = 0.5;
-const static int SENSITIVITY_LIMIT_DIV = 10;
+const static double SENSITIVITY_MOVE_VALUE = 0.3;
+const static int SENSITIVITY_LIMIT_DIV = 40; //40% 이상 점들이 같이 움직였다면 정상 , 10% 미안은 정상처리 ?
 const static int SENSITIVITY_LIMIT_NOMOVE = 2;
 const static int SENSITIVITY_LIMIT_FOUND_POINTS = 4;
 
@@ -69,9 +71,11 @@ public:
 	void init(Mat img, Rect rc);
 	bool run(Mat img, Rect& rc);
     
-    bool findObjectKeyPoint(Mat img); //gclee add
-    bool findObjectFlow(Mat img); //gclee add
-    bool isEqualKeyPoint(Mat target, Mat source); //gclee add
+    bool findObjectKeyPoint(Mat img);
+    bool findObjectFlow(Mat img);
+    bool saveNewKeyInfo(Mat img);
+    bool saveNewGoodFeature(Mat img, int init = 0);
+    bool isEqualKeyPoint(Mat target, Mat source);
     Mat setRoiObjectMaskOnBackScreen(Mat* roiMat);
 
 	void configure();
@@ -82,12 +86,14 @@ protected:
 	MatND m_model3d;
 	Mat m_backproj;
 	Rect m_rc;
+    Rect m_keypoint_rc;
     tracker_opencv_param m_param;
     //gclee add
     Rect m_prevRc;
     Mat gray, prevGray;
     vector<Point2f> points[3];
     vector<Point2f> ori_points;
+    vector<Point2f> init_ori_points;
     vector<Point2f> ori_points_temp;
     vector<uchar> status;
     vector<float> err;
@@ -105,6 +111,12 @@ protected:
     FlannBasedMatcher matcher;
     int roi_width;
     int roi_height;
+    int current_direction;
+    int prev_direction;
+    int current_findMethod;
+    
+public:
+    int debug_mode;
     
     //gclee add keypoint end
     

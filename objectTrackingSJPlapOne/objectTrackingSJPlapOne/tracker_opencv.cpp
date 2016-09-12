@@ -64,6 +64,7 @@ Mat tracker_opencv::setRoiObjectMaskOnBackScreen(Mat* roiMat)
 
 void tracker_opencv::init(Mat img, Rect rc)
 {
+    debug_mode = DEBUG_MODE_OFF;
     m_rc = rc;
     
 	Mat mask = Mat::zeros(m_rc.height, m_rc.width, CV_8U);
@@ -117,57 +118,16 @@ void tracker_opencv::init(Mat img, Rect rc)
         ori_points.clear();
         ori_points_temp.clear();
         gray.copyTo(prevGray);
+        prev_direction = -1;
+        current_findMethod = HOW_FLOW;
         
         roi_width = m_rc.width;
         roi_height = m_rc.height;
         
-        //전체화면중 추적할 ROI영역 마스킹 사각형안의 타원형
-        cv::Size s = img.size();
-        Mat featureMask = Mat::zeros(s.height, s.width, CV_8UC1);
-        mask.copyTo(featureMask(m_rc));
-        //featureMask(m_rc).setTo(Scalar(255));
-        cv::imshow("Full ROI MASK Image", featureMask);
-        
-        //Flow방식 TrackPoints 생성
-        cvtColor(img, gray, CV_BGR2GRAY);
-        goodFeaturesToTrack(gray, points[0], MAX_COUNT, 0.01, 10, featureMask, 3, 0, 0.04); //10 featureMask
-        cornerSubPix(gray, points[0], subPixWinSize, Size(-1,-1), termcrit);
-        ori_points = points[0];
+        saveNewGoodFeature(img, 1);
         
         //keypoints방식 SURF points 생성
-        Mat object_temp = img(m_rc).clone();      // Crop is color CV_8UC3
-        object = cv::Mat(m_rc.width, m_rc.height, CV_8UC1, img.type());
-        object.setTo(cv::Scalar(0,0,0));
-        object_temp.copyTo(object, mask); //mask, featureMask
-        
-        cvtColor(object, object, COLOR_BGR2GRAY); // Now crop is grayscale CV_8UC1
-        cv::imshow("ROI Image", object);
-        
-        if (!object.data){
-            cout<<"Can't create ROI gray image\n";
-            return;
-        }
-        
-        int minH;
-        minH=100; //중요 (값이 클수록 민감도 낮음)
-        SurfFeatureDetector detector(minH);
-        detector.detect(object, kpObject);
-        SurfDescriptorExtractor extractor;
-        extractor.compute(object, kpObject, desObject);
-        
-        vDesObject.push_back(desObject);
-        
-        obj_corners[0] = cvPoint(0,0);
-        obj_corners[1] = cvPoint( object.cols, 0 );
-        obj_corners[2] = cvPoint( object.cols, object.rows );
-        obj_corners[3] = cvPoint( 0, object.rows );
-        
-        //debug
-//        for(unsigned int i = 0; i < kpObject.size(); i++ )
-//        {
-//            //cout<<"surf init kpObject exist \n";
-//            circle( img, kpObject[i].pt, 1, Scalar(0,0,0), -1, 8);
-//        }
+        saveNewKeyInfo(img);
         
 	}
 	else if(m_param.color_model==CM_HUE)
@@ -234,11 +194,15 @@ bool tracker_opencv::run(Mat img, Rect& rc)
 	{
 		cvtColor(img, gray, CV_BGR2GRAY);
         
-        findObjectFlow(img);
-        findObjectKeyPoint(img);
+        if(current_findMethod == HOW_FLOW){
+            findObjectFlow(img);
+        }else{
+            findObjectKeyPoint(img);
+        }
         
         rc = m_rc;
         m_prevRc = m_rc;
+        
         return true;
         
 	}
@@ -395,6 +359,88 @@ bool tracker_opencv::isEqualKeyPoint(Mat target, Mat source)
     
 }
 
+bool tracker_opencv::saveNewGoodFeature(Mat img, int init)
+{
+    Rect rRec;
+    rRec = m_rc;
+    if(m_rc.width == 0){
+        rRec = m_prevRc;
+    }
+    Mat mask = Mat::zeros(rRec.height, rRec.width, CV_8U);
+    ellipse(mask, Point(rRec.width/2, rRec.height/2), Size(rRec.width/2, rRec.height/2), 0, 0, 360, 255, CV_FILLED);
+    
+    //전체화면중 추적할 ROI영역 마스킹 사각형안의 타원형
+    cv::Size s = img.size();
+    Mat featureMask = Mat::zeros(s.height, s.width, CV_8UC1);
+    mask.copyTo(featureMask(m_rc));
+    //featureMask(m_rc).setTo(Scalar(255));
+    cv::imshow("Full ROI MASK Image", featureMask);
+    
+    //Flow방식 TrackPoints 생성
+    cvtColor(img, gray, CV_BGR2GRAY);
+    goodFeaturesToTrack(gray, points[0], MAX_COUNT, 0.01, 10, featureMask, 3, 0, 0.04); //10 featureMask
+    cornerSubPix(gray, points[0], subPixWinSize, Size(-1,-1), termcrit);
+    ori_points = points[0];
+    
+    //if(init)
+    //    init_ori_points = ori_points;
+    init_ori_points = ori_points;
+    
+    return true;
+}
+
+bool tracker_opencv::saveNewKeyInfo(Mat img)
+{
+    Rect rRec;
+    rRec = m_rc;
+    if(m_rc.width == 0){
+        rRec = m_prevRc;
+    }
+    m_keypoint_rc = rRec;
+    
+    Mat mask = Mat::zeros(rRec.height, rRec.width, CV_8U);
+    ellipse(mask, Point(rRec.width/2, rRec.height/2), Size(rRec.width/2, rRec.height/2), 0, 0, 360, 255, CV_FILLED);
+ 
+    Mat object_temp = img(rRec).clone();      // Crop is color CV_8UC3
+    object = cv::Mat(rRec.width, rRec.height, CV_8UC1, img.type());
+    object.setTo(cv::Scalar(0,0,0));
+    object_temp.copyTo(object, mask); //mask, featureMask
+    
+    cvtColor(object, object, COLOR_BGR2GRAY); // Now crop is grayscale CV_8UC1
+    cv::imshow("ROI Image", object);
+    
+    if (!object.data){
+        cout<<"Can't create ROI gray image\n";
+        return false;
+    }
+    
+    int minH;
+    minH=100; //중요 (값이 클수록 민감도 낮음) 100->500->
+    SurfFeatureDetector detector(minH);
+    detector.detect(object, kpObject);
+    SurfDescriptorExtractor extractor;
+    extractor.compute(object, kpObject, desObject);
+    
+    if(vDesObject.size() > 10){
+        vDesObject[9] = desObject;
+    }else{
+        vDesObject.push_back(desObject);
+    }
+    
+    obj_corners[0] = cvPoint(0,0);
+    obj_corners[1] = cvPoint( object.cols, 0 );
+    obj_corners[2] = cvPoint( object.cols, object.rows );
+    obj_corners[3] = cvPoint( 0, object.rows );
+    
+    //debug
+    //        for(unsigned int i = 0; i < kpObject.size(); i++ )
+    //        {
+    //            //cout<<"surf init kpObject exist \n";
+    //            circle( img, kpObject[i].pt, 1, Scalar(0,0,0), -1, 8);
+    //        }
+    return true;
+}
+
 bool tracker_opencv::findObjectFlow(Mat img)
 {
     int reInit = 0;
@@ -432,6 +478,7 @@ bool tracker_opencv::findObjectFlow(Mat img)
         int check_fail_points = 0; // 1 : check
         int nTotal = 0;
         double d_temp_x = 0, d_temp_y;
+        //double d_same_x = 0, d_same_y;
         for( int n = 0; n < points[1].size(); n++ ){
             
             if( !status[n] ){
@@ -446,7 +493,7 @@ bool tracker_opencv::findObjectFlow(Mat img)
             //distance ori frame
             ori_distance_x += abs(ori_points.at(n).x - points[1].at(n).x);
             
-            //0.3 -> 0.5 -> 1.0
+            //0.3 -> 0.5 -> 1.0 -> 0.2
             d_temp_x = points[0].at(n).x - points[1].at(n).x;
             if(abs(d_temp_x) > SENSITIVITY_MOVE_VALUE && d_temp_x < 0){
                 //flow right
@@ -483,51 +530,59 @@ bool tracker_opencv::findObjectFlow(Mat img)
             check_fail_points = 1;
         }
         
-        //            if( noMoveCount < SENSITIVITY_LIMIT_FOUND_POINTS)
-        //            {
-        //                m_rc.width = 0;m_rc.height = 0;
-        //
-        //                cout << "hide object so return ******************** no move count: " << noMoveCount << ":" << SENSITIVITY_LIMIT_FOUND_POINTS << ":" << points[1].size() << " \n";
-        //
-        //                gray.copyTo(prevGray);
-        //                points[0].clear();
-        //                points[1].clear();
-        //                points[2].clear();
-        //                ori_points.clear();
-        //                ori_points_temp.clear();
-        //
-        //                return true;
-        //            }
+//                    if( noMoveCount < SENSITIVITY_LIMIT_FOUND_POINTS)
+//                    {
+//                        m_rc.width = 0;m_rc.height = 0;
+//        
+//                        cout << "hide object so return ******************** no move count: " << noMoveCount << ":" << SENSITIVITY_LIMIT_FOUND_POINTS << ":" << points[1].size() << " \n";
+//        
+//                        gray.copyTo(prevGray);
+//                        points[0].clear();
+//                        points[1].clear();
+//                        points[2].clear();
+//                        ori_points.clear();
+//                        ori_points_temp.clear();
+//        
+//                        return true;
+//                    }
         
-        // 일부 points만 움직임, object를 앞에서 가림, 10%미만인 경우 에러로 확인함
-        //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //            d_temp_x = flowXrightCount+flowXleftCount;
-        //            d_temp_y = flowYupCount+flowYdownCount;
-        //
-        //            if(d_temp_x > 0 && d_temp_y > 0){
-        //                double tvalue = d_temp_x/points[1].size() * 100;
-        //                double ttvalue = d_temp_y/points[1].size() * 100;
-        //                cout << "check hide object ******************** tvalue: " << tvalue << ":" << ttvalue << "\n";
-        //                cout << "check hide object ******************** move count: " << d_temp_x << ":" << d_temp_y << ":" << points[1].size() << " \n";
-        //                if(  tvalue < SENSITIVITY_LIMIT_DIV &&
-        //                   ttvalue < SENSITIVITY_LIMIT_DIV){
-        //
-        //                    cout << "hide object so return ******************** move count: " << d_temp_x << ":" << d_temp_y << ":" << points[1].size() << " \n";
-        //
-        //                    m_rc.width = 0;m_rc.height = 0;
-        //    //                std::swap(points[2], points[0]);
-        //    //                std::swap(ori_points_temp, ori_points);
-        //                    gray.copyTo(prevGray);
-        //                    points[0].clear();
-        //                    points[1].clear();
-        //                    points[2].clear();
-        //                    ori_points.clear();
-        //                    ori_points_temp.clear();
-        //
-        //                    return true;
-        //                }
-        //            }
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //일부 points만 움직임, object를 앞에서 가림, 10%미만인 경우 에러로 확인함
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                    d_temp_x = flowXrightCount+flowXleftCount;
+                    d_temp_y = flowYupCount+flowYdownCount;
+        
+//                    if(d_temp_x > 0 && d_temp_y > 0){
+//                        double tvalue = d_temp_x/points[1].size() * 100;
+//                        double ttvalue = d_temp_y/points[1].size() * 100;
+//                        cout << "check hide object ******************** tvalue: " << tvalue << ":" << ttvalue << "\n";
+//                        cout << "check hide object ******************** move count: " << d_temp_x << ":" << d_temp_y << ":" << points[1].size() << " \n";
+//                        if(  tvalue < SENSITIVITY_LIMIT_DIV &&
+//                           ttvalue < SENSITIVITY_LIMIT_DIV){
+////                        if(  (tvalue > 10.0  && tvalue < 30.0) &&
+////                            (ttvalue > 10.0 && ttvalue < 30.0) ){
+//        
+//                            cout << "hide object so return ******************** move count: " << d_temp_x << ":" << d_temp_y << ":" << points[1].size() << " \n";
+//        
+//                            std::swap(points[2], points[0]);
+//                            std::swap(ori_points_temp, ori_points);
+//                            gray.copyTo(prevGray);
+//                            points[0].clear();
+//                            points[1].clear();
+//                            points[2].clear();
+//                            ori_points.clear();
+//                            ori_points_temp.clear();
+//                            init_ori_points.clear();
+//                            
+//                            //find object for keypoins
+//                            m_rc = m_keypoint_rc;
+//                            current_findMethod = HOW_KEYPOINTS;
+//                            findObjectKeyPoint(img);
+//                            
+//                            return true;
+//        
+//                        }
+//                    }
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////////////////////////////////
         (flowXrightCount > flowXleftCount)?flowX = -1:flowX = 1;
         (flowYdownCount > flowYupCount)?flowY = -1:flowY = 1;
@@ -546,38 +601,34 @@ bool tracker_opencv::findObjectFlow(Mat img)
                 d_temp_x = abs(points[0].at(i).x - points[1].at(i).x);
                 d_temp_y = abs(points[0].at(i).y - points[1].at(i).y);
                 
-                if( d_temp_x < 0.2 && d_temp_y < 0.2){
+//                if( d_temp_x < 0.1 && d_temp_y < 0.1){ //중요 0.3 -> 0.1
+//                    continue;
+//                }
+                
+                if( d_temp_x < 0.3 || d_temp_y < 0.3){ //중요 0.3 -> 0.1
                     continue;
                 }
                 
                 
-                // to right & up
-                //                    if(flowX == -1 && flowY == 1){
-                //                        if(ori_points.at(i).x - points[1].at(i).x > 0 && ori_points.at(i).y - points[1].at(i).y < 0){
-                //                            continue;
-                //                        }
-                //                    }
-                //
-                //                    // to right & down
-                //                    if(flowX == -1 && flowY == -1){
-                //                        if(ori_points.at(i).x - points[1].at(i).x > 0 && ori_points.at(i).y - points[1].at(i).y > 0){
-                //                            continue;
-                //                        }
-                //                    }
-                //
-                //                    // to left & up
-                //                    if(flowX == 1 && flowY == 1){
-                //                        if(ori_points.at(i).x - points[1].at(i).x < 0 && ori_points.at(i).y - points[1].at(i).y < 0){
-                //                            continue;
-                //                        }
-                //                    }
-                //
-                //                    // to left & down
-                //                    if(flowX == 1 && flowY == -1){
-                //                        if(ori_points.at(i).x - points[1].at(i).x < 0 && ori_points.at(i).y - points[1].at(i).y > 0){
-                //                            continue;
-                //                        }
-                //                    }
+                //to right & up
+                if(flowX == -1 && flowY == 1){
+                    current_direction = CM_RIGHT_UP;
+                }
+
+                // to right & down
+                if(flowX == -1 && flowY == -1){
+                    current_direction = CM_RIGHT_DOWN;
+                }
+
+                // to left & up
+                if(flowX == 1 && flowY == 1){
+                    current_direction = CM_LEFT_UP;
+                }
+
+                // to left & down
+                if(flowX == 1 && flowY == -1){
+                    current_direction = CM_LEFT_DOWN;
+                }
                 
                 //                    if(flowX == -1){ // to right
                 //                        if(ori_points.at(i).x - points[1].at(i).x > 0){
@@ -669,65 +720,71 @@ bool tracker_opencv::findObjectFlow(Mat img)
             if(ymin > tyval)
                 ymin = tyval;
             
-            circle( img, points[1][i], 3, Scalar(0,255,0), -1, 8);
-            circle( img, points[0][i], 3, Scalar(0,0,255), -1, 8);
-            
-            line(img, ori_points.at(i), points[1][i], Scalar(255,255,255));
+            if(debug_mode == DEBUG_MODE_ON){
+                circle( img, points[1][i], 3, Scalar(0,255,0), -1, 8);
+                circle( img, points[0][i], 3, Scalar(0,0,255), -1, 8);
+                
+                line(img, ori_points.at(i), points[1][i], Scalar(255,255,255));
+            }
             
             points[2].push_back(points[1][i]);
             ori_points_temp.push_back(ori_points[i]);
             
         }
         
-        if(xmin == 10000 || ymin == 1000 || xmax == 0 || ymax == 0){
-            //fail
-            reInit = 0;
+        cout << "init_ori_points.size : points[2].size " << init_ori_points.size() << ":" << points[2].size() << "\n";
+        if( (points[2].size() / (double)init_ori_points.size())*100 < 80){ //중요 90 -> 80
+            cout << "disapear poins ratio:" << (points[2].size() / (double)init_ori_points.size())*100 << "\n";
+            
+            std::swap(points[2], points[0]);
+            std::swap(ori_points_temp, ori_points);
+            gray.copyTo(prevGray);
+            points[0].clear();
+            points[1].clear();
+            points[2].clear();
+            ori_points.clear();
+            ori_points_temp.clear();
+            init_ori_points.clear();
+            
+            //find object for keypoins
+            m_rc = m_keypoint_rc;
+            current_findMethod = HOW_KEYPOINTS;
+            findObjectKeyPoint(img);
+            
             return true;
+            
         }
         
         Rect tRect(xmin, ymin, xmax-xmin, ymax-ymin);
-        //tracking
-        //decision find object true or false (for width & height)
-        //float cRatio = (ymax-ymin)/(xmax-xmin);
+        m_rc = tRect;
+        xroicenter = m_rc.x + m_rc.width/2;
+        yroicenter = m_rc.y + m_rc.height/2;
         
-        (m_prevRc.width == 0)?m_prevRc.width = 10:m_prevRc.width = m_prevRc.width;
-        (m_prevRc.height == 0)?m_prevRc.height = 10:m_prevRc.height = m_prevRc.height;
+        (m_rc.width == 0)?m_rc.width = 10:m_rc.width = m_rc.width;
+        (m_rc.height == 0)?m_rc.height = 10:m_rc.height = m_rc.height;
         
-        //float pRatio = (m_prevRc.height)/(m_prevRc.width);
-        //if(abs(pRatio - cRatio) > 2){
-        //if( !(cRatio > 0.5 && cRatio < 2) ){
-        if( false ){
-            //cout << "fail find object so change keypoint Ratio diff value : " << abs(pRatio - cRatio) << "======================> \n";
-            //find object fail for goodFeature
-            //find key point
-            if(findObjectKeyPoint(img))
-                rectangle(img, m_rc, Scalar(0,255,0), 3, 4);
-            
-        }else{
-            m_rc = tRect;
-            xroicenter = m_rc.x + m_rc.width/2;
-            yroicenter = m_rc.y + m_rc.height/2;
-            
-            (m_rc.width == 0)?m_rc.width = 10:m_rc.width = m_rc.width;
-            (m_rc.height == 0)?m_rc.height = 10:m_rc.height = m_rc.height;
-            
-            rectangle(img, m_rc, Scalar(0,255,0), 3, 4);
+        if(prev_direction != current_direction){
+            //save new keypoint
+            saveNewKeyInfo(img);
         }
         
-        //re ini ////////////////////////////////////////////////////////////////////////////////////////////////////
-        if(reInit){
-            reInit = 0;
-            cv::Size s = img.size();
-            Mat featureMask = Mat::zeros(s.height, s.width, CV_8UC1);
-            featureMask(m_rc).setTo(Scalar(255));
-            rectangle(featureMask, m_rc, Scalar(255,255,255), 3, CV_FILLED); //3, CV_FILLED
-            //ellipse(featureMask, Point(rc.width/2, rc.height/2), Size(rc.width/2, rc.height/2), 0, 0, 360, 255, CV_FILLED);
-            // automatic initialization
-            goodFeaturesToTrack(gray, points[0], MAX_COUNT, 0.01, 10, featureMask, 3, 0, 0.04); //10 featureMask
-            cornerSubPix(gray, points[0], subPixWinSize, Size(-1,-1), termcrit);
-            //gclee add end
+        if(xmin == 10000 || ymin == 1000 || xmax == 0 || ymax == 0){
+            //fail
+            cout << "fail faile faile faile \n";
+            return true;
         }
-        //re ini end /////////////////////////////////////////////////////////////////////////////////////////////////
+        
+        //크기 보정
+//        m_rc.x = m_rc.x - roi_width/2;
+//        m_rc.y = m_rc.y - roi_height/2;
+//        (m_rc.x < 0)?m_rc.x=0:m_rc.x=m_rc.x;
+//        (m_rc.y < 0)?m_rc.y=0:m_rc.y=m_rc.y;
+//        
+//        m_rc.width = roi_width;
+//        m_rc.height = roi_height;
+        /////////////////////////////////////////
+        
+        rectangle(img, m_rc, Scalar(0,255,0), 3, 4);
         
         cout << "end draw rect ======================> \n";
         
@@ -760,7 +817,9 @@ bool tracker_opencv::findObjectKeyPoint(Mat img)
     
     int findObject = 0;
     good_matches.clear();
+    int offset = vDesObject.size();
     for(unsigned int i = 0; i < vDesObject.size(); i++ ){
+//        matcher.knnMatch(vDesObject[offset-1], des_image, matches, 2);
         matcher.knnMatch(vDesObject[i], des_image, matches, 2);
         
         for(int ii = 0; ii < min(des_image.rows-1,(int) matches.size()); ii++) //THIS LOOP IS SENSITIVE TO SEGFAULTS
@@ -775,11 +834,11 @@ bool tracker_opencv::findObjectKeyPoint(Mat img)
             findObject = 1;
             break;
         }
+        //offset--;
     }
     
     if (findObject)
     {
-        
         //Display that the object is found
         putText(img, "Object Found", cvPoint(10,50),FONT_HERSHEY_COMPLEX_SMALL, 2, cvScalar(0,0,250), 1, CV_AA);
         int xTotalVal =0, yTotalVal =0;
@@ -793,8 +852,10 @@ bool tracker_opencv::findObjectKeyPoint(Mat img)
             obj.push_back( kpObject[ good_matches[i].queryIdx ].pt );
             scene.push_back( kp_image[ good_matches[i].trainIdx ].pt );
             
-            circle( img, kp_image[ good_matches[i].trainIdx ].pt, 3, Scalar(0,0,0), -1, 8);
-            
+            if(debug_mode == DEBUG_MODE_ON){
+                circle( img, kp_image[ good_matches[i].trainIdx ].pt, 3, Scalar(0,0,0), -1, 8);
+            }
+  
             txval = kp_image[ good_matches[i].trainIdx ].pt.x;
             tyval = kp_image[ good_matches[i].trainIdx ].pt.y;
             xTotalVal += kp_image[ good_matches[i].trainIdx ].pt.x;
@@ -811,172 +872,33 @@ bool tracker_opencv::findObjectKeyPoint(Mat img)
                 ymin = tyval;
         }
         
-        H = findHomography( obj, scene, CV_RANSAC );
-        perspectiveTransform( obj_corners, scene_corners, H);
+        //Rect tRect(xmin, ymin, xmax-xmin, ymax-ymin);
+//        Rect tRect(xmin, ymin, m_prevRc.width, m_prevRc.height);
+//        m_rc = tRect;
+        m_rc = m_keypoint_rc;
+        rectangle(img, m_rc, Scalar(0,0,255), 3, 4);
         
-        line(img, scene_corners[0], scene_corners[1], Scalar(0, 0, 255), 4 );
-        line(img, scene_corners[1], scene_corners[2], Scalar(0, 0, 255), 4 );
-        line(img, scene_corners[2], scene_corners[3], Scalar(0, 0, 255), 4 );
-        line(img, scene_corners[3], scene_corners[0], Scalar(0, 0, 255), 4 );
+        //find object for flow
+        saveNewGoodFeature(img, 0);
+        current_findMethod = HOW_FLOW;
+
+//        H = findHomography( obj, scene, CV_RANSAC );
+//        perspectiveTransform( obj_corners, scene_corners, H);
+//        
+//        line(img, scene_corners[0], scene_corners[1], Scalar(0, 0, 255), 4 );
+//        line(img, scene_corners[1], scene_corners[2], Scalar(0, 0, 255), 4 );
+//        line(img, scene_corners[2], scene_corners[3], Scalar(0, 0, 255), 4 );
+//        line(img, scene_corners[3], scene_corners[0], Scalar(0, 0, 255), 4 );
         
-        //circle( img, kpObject[ good_matches[i].queryIdx ].pt, 3, Scalar(0,255,255), -1, 8);
-        
-        //        xTotalVal = xTotalVal/good_matches.size();
-        //        yTotalVal = yTotalVal/good_matches.size();
-        //
-        //
-        //        Rect newRoiRect(scene_corners[0].x, scene_corners[0].y, scene_corners[3].x - scene_corners[2].x, scene_corners[1].y - scene_corners[2].y);
-        //        //Rect newRoiRect(xmin, ymin, xmax-xmin, ymax-ymin);
-        //
-        ////        cv::Size s = img.size();
-        ////        if(newRoiRect.x + newRoiRect.width >= s.width || newRoiRect.y + newRoiRect.height >= s.height || newRoiRect.x <= 0 || newRoiRect.y <= 0)
-        ////        {
-        ////            cout<<"Can't create NEW ROI \n";
-        ////            return true;
-        ////        }
-        //        m_rc = newRoiRect;
-        //        (m_rc.width == 0)?m_rc.width = 10:m_rc.width = m_rc.width;
-        //        (m_rc.height == 0)?m_rc.height = 10:m_rc.height = m_rc.height;
-        //
-        //
-        //        // goodfeature (flow) init ==================================================================================================
-        //        cv::Size s = img.size();
-        //        Mat featureMask = Mat::zeros(s.height, s.width, CV_8UC1);
-        //        featureMask(m_rc).setTo(Scalar(255));
-        //        //rectangle(featureMask, m_rc, Scalar(255,255,255), 3, CV_FILLED); //3, CV_FILLED
-        //        //ellipse(featureMask, Point(rc.width/2, rc.height/2), Size(rc.width/2, rc.height/2), 0, 0, 360, 255, CV_FILLED);
-        //        // automatic initialization
-        //        points[0].clear();
-        //        points[2].clear();
-        //
-        //        goodFeaturesToTrack(gray, points[0], MAX_COUNT, 0.01, 10, featureMask, 3, 0, 0.04); //10 featureMask
-        //        cornerSubPix(gray, points[0], subPixWinSize, Size(-1,-1), termcrit);
-        // goodfeature (flow) init end ==================================================================================================
-        //        calcOpticalFlowPyrLK(prevGray, gray, points[0], points[1], status, err, winSize,
-        //                             3, termcrit, 0, 0.001);
-        //
-        //        xmax = ymax = 0;
-        //        xmin = ymin = 10000;
-        //
-        //        for( i = k = 0; i < points[1].size(); i++ )
-        //        {
-        //            if( !status[i] ){
-        //                cout << "status error)\n";
-        //                continue;
-        //            }
-        //
-        //            txval = points[1].at(i).x;
-        //            tyval = points[1].at(i).y;
-        //
-        //            if(xmin > txval)
-        //                xmin = txval;
-        //            if(ymax < tyval)
-        //                ymax = tyval;
-        //            if(xmax < txval)
-        //                xmax = txval;
-        //            if(ymin > tyval)
-        //                ymin = tyval;
-        //
-        //            circle( img, points[1][i], 3, Scalar(255,255,255), -1, 2);
-        //
-        //            points[2].push_back(points[1][i]);
-        //
-        //        }
-        //
-        //        Rect tRect(xmin, ymin, xmax-xmin, ymax-ymin);
-        //        m_rc = tRect;
         
         return true;
         
-        //        H = findHomography( obj, scene, CV_RANSAC );
-        //        perspectiveTransform( obj_corners, scene_corners, H);
-        //
-        //        line(img, scene_corners[0], scene_corners[1], Scalar(0, 255, 0), 4 );
-        //        line(img, scene_corners[1], scene_corners[2], Scalar(0, 255, 0), 4 );
-        //        line(img, scene_corners[2], scene_corners[3], Scalar(0, 255, 0), 4 );
-        //        line(img, scene_corners[3], scene_corners[0], Scalar(0, 255, 0), 4 );
-        
-        //circle( img, kpObject[ good_matches[i].queryIdx ].pt, 3, Scalar(0,255,255), -1, 8);
-        
-        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //        xTotalVal = xTotalVal/good_matches.size();
-        //        yTotalVal = yTotalVal/good_matches.size();
-        //
-        //
-        //        Rect newRoiRect(xTotalVal-newRoiSize/2, yTotalVal-newRoiSize/2, newRoiSize, newRoiSize);
-        //        cv::Size s = img.size();
-        //        if(newRoiRect.x + newRoiRect.width >= s.width || newRoiRect.y + newRoiRect.height >= s.height || newRoiRect.x <= 0 || newRoiRect.y <= 0)
-        //        {
-        //            cout<<"Can't create NEW ROI \n";
-        //            return true;
-        //        }
-        //        m_rc = newRoiRect;
-        //
-        //        //# meanshift add (HSV) //////////////////////////////////////////////////////////////////////////////////////////
-        //        float hrange[] = {0,180};
-        //        float vrange[] = {0,255};
-        //        const float* ranges[] = {hrange, vrange, vrange};	// hue, saturation, brightness
-        //        int channels[] = {0, 1, 2};
-        //        int hist_sizes[] = {m_param.hist_bins, m_param.hist_bins, m_param.hist_bins};
-        //
-        //        Mat roi(img, m_rc);
-        //        Mat tempMask = Mat::zeros(m_rc.height, m_rc.width, CV_8U);
-        //        rectangle(tempMask, m_rc, Scalar(255,255,255), 3, CV_FILLED);
-        //        calcHist(&roi, 1, channels, tempMask, m_model3d, 3, hist_sizes, ranges);
-        //        Mat hsv;
-        //        cvtColor(img, hsv, CV_BGR2HSV);
-        //        calcBackProject(&hsv, 1, channels, m_model3d, m_backproj, ranges);
-        //
-        ////            object = img(m_rc).clone();      // Crop is color CV_8UC3
-        ////            cvtColor(object, object, COLOR_BGR2GRAY); // Now crop is grayscale CV_8UC1
-        //        cv::imshow("New ROI Image", roi);
-        
-        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        
     }else{
+       
+        //find object to flow
         
-        return false;
-        
-        //        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //        // # add meanshift (HSV)
-        //        int itrs = meanShift(m_backproj, m_rc, TermCriteria( CV_TERMCRIT_EPS | CV_TERMCRIT_ITER, m_param.max_itrs, 1 ));
-        //        //cout << "xval:" << m_rc.x << " yval:" << m_rc.y << " width:" << m_rc.width << " height:" << m_rc.height << "\n";
-        //        rectangle(img, m_rc, Scalar(0,0,255), 2, CV_AA);
-        //
-        //        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //        //# meanshift add (HSV)
-        //        float hrange[] = {0,180};
-        //        float vrange[] = {0,255};
-        //        const float* ranges[] = {hrange, vrange, vrange};	// hue, saturation, brightness
-        //        int channels[] = {0, 1, 2};
-        //        int hist_sizes[] = {m_param.hist_bins, m_param.hist_bins, m_param.hist_bins};
-        //        Mat roi(img, m_rc);
-        //        Mat tempMask = Mat::zeros(m_rc.height, m_rc.width, CV_8U);
-        //        rectangle(tempMask, m_rc, Scalar(255,255,255), 3, CV_FILLED);
-        //        calcHist(&roi, 1, channels, tempMask, m_model3d, 3, hist_sizes, ranges);
-        //        Mat hsv;
-        //        cvtColor(img, hsv, CV_BGR2HSV);
-        //        calcBackProject(&hsv, 1, channels, m_model3d, m_backproj, ranges);
-        //
-        //        //#############################################################
-        //        object = img(m_rc).clone();      // Crop is color CV_8UC3
-        //        cvtColor(object, object, COLOR_BGR2GRAY); // Now crop is grayscale CV_8UC1
-        //        cv::imshow("ROI Image", object);
-        //        if (!object.data){
-        //            cout<<"Can't create ROI gray image\n";
-        //            return true;
-        //        }
-        //        detector.detect(object, kpObject);
-        //        SurfDescriptorExtractor extractor;
-        //        extractor.compute(object, kpObject, desObject);
-        //
-        //        obj_corners[0] = cvPoint(0,0);
-        //        obj_corners[1] = cvPoint( object.cols, 0 );
-        //        obj_corners[2] = cvPoint( object.cols, object.rows );
-        //        obj_corners[3] = cvPoint( 0, object.rows );
-        
-        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        
+        //saveNewKeyInfo(img);
+        //saveNewGoodFeature(img);
     }
     
     return true;

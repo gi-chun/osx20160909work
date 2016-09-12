@@ -107,6 +107,8 @@ void proc_video(VideoCapture *vc)
 		if( ch == 27 ) break;	// ESC Key (exit)
 		else if(ch == 32 )	// SPACE Key (pause)
 		{
+            (tracker.debug_mode == 0)?tracker.debug_mode = 1:tracker.debug_mode = 0;
+            
 			while((ch = waitKey(10)) != 32 && ch != 27);
 			if(ch == 27) break;
 		}
