@@ -110,6 +110,7 @@ void tracker_opencv::init(Mat img, Rect rc)
 	else if(m_param.color_model==CM_KEYPOINTS)
 	{
         //초기화
+        m_rc = rc;
         m_prevRc = rc;
         vDesObject.clear();
         points[0].clear();
@@ -366,13 +367,16 @@ bool tracker_opencv::saveNewGoodFeature(Mat img, int init)
     if(m_rc.width == 0){
         rRec = m_prevRc;
     }
+    
+    cv::Size s = img.size();
+//    validateROI(&rRec, s);
+    
     Mat mask = Mat::zeros(rRec.height, rRec.width, CV_8U);
     ellipse(mask, Point(rRec.width/2, rRec.height/2), Size(rRec.width/2, rRec.height/2), 0, 0, 360, 255, CV_FILLED);
     
     //전체화면중 추적할 ROI영역 마스킹 사각형안의 타원형
-    cv::Size s = img.size();
     Mat featureMask = Mat::zeros(s.height, s.width, CV_8UC1);
-    mask.copyTo(featureMask(m_rc));
+    mask.copyTo(featureMask(rRec));
     //featureMask(m_rc).setTo(Scalar(255));
     cv::imshow("Full ROI MASK Image", featureMask);
     
@@ -396,6 +400,10 @@ bool tracker_opencv::saveNewKeyInfo(Mat img)
     if(m_rc.width == 0){
         rRec = m_prevRc;
     }
+    
+//    cv::Size s = img.size();
+//    validateROI(&rRec, s);
+    
     m_keypoint_rc = rRec;
     
     Mat mask = Mat::zeros(rRec.height, rRec.width, CV_8U);
@@ -422,7 +430,7 @@ bool tracker_opencv::saveNewKeyInfo(Mat img)
     extractor.compute(object, kpObject, desObject);
     
     if(vDesObject.size() > 10){
-        vDesObject[9] = desObject;
+        //vDesObject[9] = desObject;
     }else{
         vDesObject.push_back(desObject);
     }
@@ -462,8 +470,25 @@ bool tracker_opencv::findObjectFlow(Mat img)
         
         points[2].clear();
         
-        if(points[1].size() < SENSITIVITY_LIMIT_FOUND_POINTS )
+        if(points[1].size() < SENSITIVITY_LIMIT_FOUND_POINTS ){
+            
+            std::swap(points[2], points[0]);
+            std::swap(ori_points_temp, ori_points);
+            gray.copyTo(prevGray);
+            points[0].clear();
+            points[1].clear();
+            points[2].clear();
+            ori_points.clear();
+            ori_points_temp.clear();
+            init_ori_points.clear();
+            
+            //find object for keypoins
+            //m_rc = m_keypoint_rc;     //m_keypoint_rc: find object for keypoints로 찾을때 최근저장한 이미지 영역
+            current_findMethod = HOW_KEYPOINTS;
+            findObjectKeyPoint(img);
+            
             return true;
+        }
         
         //            if(points[1].size() < 1)
         //                points[0] = ori_points;
@@ -601,14 +626,9 @@ bool tracker_opencv::findObjectFlow(Mat img)
                 d_temp_x = abs(points[0].at(i).x - points[1].at(i).x);
                 d_temp_y = abs(points[0].at(i).y - points[1].at(i).y);
                 
-//                if( d_temp_x < 0.1 && d_temp_y < 0.1){ //중요 0.3 -> 0.1
-//                    continue;
-//                }
-                
-                if( d_temp_x < 0.3 || d_temp_y < 0.3){ //중요 0.3 -> 0.1
+                if( d_temp_x < 0.3 && d_temp_y < 0.3){ //중요 0.3 -> 0.1 작을수록 다른 포인트보다 움직임이 >>>>> 적은것
                     continue;
                 }
-                
                 
                 //to right & up
                 if(flowX == -1 && flowY == 1){
@@ -747,7 +767,7 @@ bool tracker_opencv::findObjectFlow(Mat img)
             init_ori_points.clear();
             
             //find object for keypoins
-            m_rc = m_keypoint_rc;
+            //m_rc = m_keypoint_rc;     //m_keypoint_rc: find object for keypoints로 찾을때 최근저장한 이미지 영역
             current_findMethod = HOW_KEYPOINTS;
             findObjectKeyPoint(img);
             
@@ -756,12 +776,14 @@ bool tracker_opencv::findObjectFlow(Mat img)
         }
         
         Rect tRect(xmin, ymin, xmax-xmin, ymax-ymin);
+        //Rect tRect(xmin, ymin, roi_width, roi_height); //object를 찾았다면 ROI width, height는 처음 찾을당시 ROI유지
+
+        cv::Size s = img.size();
+        validateROI(&tRect, s);
+        
         m_rc = tRect;
         xroicenter = m_rc.x + m_rc.width/2;
         yroicenter = m_rc.y + m_rc.height/2;
-        
-        (m_rc.width == 0)?m_rc.width = 10:m_rc.width = m_rc.width;
-        (m_rc.height == 0)?m_rc.height = 10:m_rc.height = m_rc.height;
         
         if(prev_direction != current_direction){
             //save new keypoint
@@ -773,16 +795,6 @@ bool tracker_opencv::findObjectFlow(Mat img)
             cout << "fail faile faile faile \n";
             return true;
         }
-        
-        //크기 보정
-//        m_rc.x = m_rc.x - roi_width/2;
-//        m_rc.y = m_rc.y - roi_height/2;
-//        (m_rc.x < 0)?m_rc.x=0:m_rc.x=m_rc.x;
-//        (m_rc.y < 0)?m_rc.y=0:m_rc.y=m_rc.y;
-//        
-//        m_rc.width = roi_width;
-//        m_rc.height = roi_height;
-        /////////////////////////////////////////
         
         rectangle(img, m_rc, Scalar(0,255,0), 3, 4);
         
@@ -872,10 +884,12 @@ bool tracker_opencv::findObjectKeyPoint(Mat img)
                 ymin = tyval;
         }
         
-        //Rect tRect(xmin, ymin, xmax-xmin, ymax-ymin);
+        Rect tRect(xmin, ymin, xmax-xmin, ymax-ymin);
+        cv::Size s = img.size();
+        validateROI(&tRect, s);
 //        Rect tRect(xmin, ymin, m_prevRc.width, m_prevRc.height);
-//        m_rc = tRect;
-        m_rc = m_keypoint_rc;
+        m_rc = tRect;
+        //m_rc = m_keypoint_rc; //m_keypoint_rc: 최근저장한 이미지 영역, 찾을당시 ROI영역도 포인터를 찾았다면, 해당영역으로 표시
         rectangle(img, m_rc, Scalar(0,0,255), 3, 4);
         
         //find object for flow
@@ -885,10 +899,10 @@ bool tracker_opencv::findObjectKeyPoint(Mat img)
 //        H = findHomography( obj, scene, CV_RANSAC );
 //        perspectiveTransform( obj_corners, scene_corners, H);
 //        
-//        line(img, scene_corners[0], scene_corners[1], Scalar(0, 0, 255), 4 );
-//        line(img, scene_corners[1], scene_corners[2], Scalar(0, 0, 255), 4 );
-//        line(img, scene_corners[2], scene_corners[3], Scalar(0, 0, 255), 4 );
-//        line(img, scene_corners[3], scene_corners[0], Scalar(0, 0, 255), 4 );
+//        line(img, scene_corners[0], scene_corners[1], Scalar(255, 0, 0), 4 );
+//        line(img, scene_corners[1], scene_corners[2], Scalar(255, 0, 0), 4 );
+//        line(img, scene_corners[2], scene_corners[3], Scalar(255, 0, 0), 4 );
+//        line(img, scene_corners[3], scene_corners[0], Scalar(255, 0, 0), 4 );
         
         
         return true;
@@ -903,4 +917,35 @@ bool tracker_opencv::findObjectKeyPoint(Mat img)
     
     return true;
     
+}
+
+void tracker_opencv::validateROI(Rect* rec, cv::Size pS)
+{
+    //ROI 영역보다 적다면 보정한다.
+    if(rec->width/(double)roi_width < 0.10){
+        rec->x = rec->x - (abs(roi_width-rec->x))/2;
+        //rec->x = rec->x - roi_width*0.25/2;
+        rec->width = rec->width + (abs(roi_width-rec->x))/2;
+    }
+    
+    if(rec->height/(double)roi_height < 0.10){
+        rec->y = rec->y - (abs(roi_height-rec->y))/2;
+        //rec->y = rec->y - roi_height*0.25/2;
+        rec->height = rec->height + (abs(roi_height-rec->y))/2;
+    }
+    
+    if(rec->width > roi_width){
+        rec->width = roi_width;
+    }
+    
+    if(rec->height > roi_height){
+        rec->height = roi_height;
+    }
+    
+    //전체이미지 대응 보정
+    (rec->width < 1)?rec->width=10:rec->width;
+    (rec->height < 1)?rec->height=10:rec->height;
+    
+    ((rec->x+rec->width) > pS.width)?rec->width=pS.width-rec->x:rec->width;
+    ((rec->y+rec->height) > pS.height)?rec->height=pS.height-rec->y:rec->height;
 }

@@ -6,7 +6,6 @@
 #include <iostream>
 //#include <windows.h>
 #include "tracker_opencv.h"
-#include "CMT.h"
 
 using namespace std;
 
@@ -59,37 +58,25 @@ void onMouse( int event, int x, int y, int flags, void* param )
 	}
 }
 
-void proc_video(VideoCapture *vc, int type)
+void proc_video(VideoCapture *vc)
 {
-    CMT cmt;
-    Mat frame;
-    
-    *vc >> frame;
-    
-    if(type == 3){
-        // 크기 변경
-        resize(frame, frame, Size(1280,720));
-        // 영상 반전(flip)
-        flip(frame, frame, -1);// vertial & horizontal flip
-    }
-    
-    imshow("image", frame);
-    
-    CallbackParam param;
-    param.frame = frame;
-    param.drag = false;
-    param.updated = false;
+	tracker_opencv tracker;
+	tracker.configure();
+
+	Mat frame;
+	*vc >> frame;
+	imshow("image", frame);
+
+	CallbackParam param;
+	param.frame = frame;
+	param.drag = false;
+	param.updated = false;
     setMouseCallback("image", onMouse, &param);
-    
-    /////////////////////////////////////////////////
-//	tracker_opencv tracker;
-//	tracker.configure();
 
 	bool tracking = false;
 	while(1)
 	{
-        
-        // image acquisition & target init
+		// image acquisition & target init
 		if(param.drag)
 		{
 		    if( waitKey(10) == 27 ) break;		// ESC key
@@ -97,84 +84,19 @@ void proc_video(VideoCapture *vc, int type)
 		}
 		if(param.updated)
 		{
-//            if(type == 3){
-//                // 크기 변경
-//                resize(frame, frame, Size(1280,720));
-//                // 영상 반전(flip)
-//                flip(frame, frame, -1);// vertial & horizontal flip
-//            }
-            
 			Rect rc = param.roi;
-			//tracker.init(frame, rc);
-            cv::Mat im_gray;
-            cv::cvtColor(frame, im_gray, CV_RGB2GRAY);
-            cv::Point2f initTopLeft(rc.x, rc.y);
-            cv::Point2f initBottomDown(rc.x+rc.width,rc.y+rc.height);
-            tracking = cmt.initialise(im_gray, initTopLeft, initBottomDown);
-            
+			tracker.init(frame, rc);
 			param.updated = false;
-			//tracking = true;
+			tracking = true;
 		}
-        *vc >> frame;
-        param.frame = frame;
-        
-        if(frame.empty()){
-            if(type == 3){
-                if(vc) delete vc;
-                vc = new VideoCapture("/Users/gclee/Documents/IMG_0793.MOV");
-                if (!vc->isOpened())
-                {
-                    cout << "can't open video file" << endl;
-                    return;
-                }
-                continue;
-            }else{
-                break;
-            }
-        }
-        
-        if(type == 3){
-            // 크기 변경
-            resize(frame, frame, Size(1280,720));
-            //resize(frame, frame, Size(), 0.5, 0.5);//scalex, scaley
-            // 영상 반전(flip)
-            //flip(frame, frame, 0);// vertical flip
-            //flip(frame, frame, 1);// horizontal flip
-            flip(frame, frame, -1);// vertial & horizontal flip
-            
-            param.frame = frame;
-        }
-	
+		*vc >> frame;
+		if(frame.empty()) break;
+
 		// image processing
 		if(tracking)
 		{
 			Rect rc;
-			//bool ok = tracker.run(frame, rc);
-            cv::Mat im_gray;
-            cv::cvtColor(frame, im_gray, CV_RGB2GRAY);
-            cmt.processFrame(im_gray);
-            
-            if(cmt.hasResult){
-                for(int i = 0; i<cmt.trackedKeypoints.size(); i++)
-                    cv::circle(frame, cmt.trackedKeypoints[i].first.pt, 3, cv::Scalar(255,255,255));
-                
-//                cv::line(frame, cmt.topLeft, cmt.topRight, cv::Scalar(255,255,255));
-//                cv::line(frame, cmt.topRight, cmt.bottomRight, cv::Scalar(255,255,255));
-//                cv::line(frame, cmt.bottomRight, cmt.bottomLeft, cv::Scalar(255,255,255));
-//                cv::line(frame, cmt.bottomLeft, cmt.topLeft, cv::Scalar(255,255,255));
-                
-                rectangle(frame, cmt.boundingbox, Scalar(0,0,255), 1, 4);
-                //draw some crosshairs around the object
-                int x, y = 0;
-                x = cmt.boundingbox.x+cmt.boundingbox.width/2;
-                y = cmt.boundingbox.y+cmt.boundingbox.height/2;
-                circle(frame,Point(x,y),10,Scalar(0,255,0),1);
-                line(frame,Point(x,y),Point(x,y-15),Scalar(0,255,0),1);
-                line(frame,Point(x,y),Point(x,y+15),Scalar(0,255,0),1);
-                line(frame,Point(x,y),Point(x-15,y),Scalar(0,255,0),1);
-                line(frame,Point(x,y),Point(x+15,y),Scalar(0,255,0),1);
-            }
-            
+			bool ok = tracker.run(frame, rc);
 		}
 
 		// image display
@@ -185,13 +107,12 @@ void proc_video(VideoCapture *vc, int type)
 		if( ch == 27 ) break;	// ESC Key (exit)
 		else if(ch == 32 )	// SPACE Key (pause)
 		{
-//            (tracker.debug_mode == 0)?tracker.debug_mode = 1:tracker.debug_mode = 0;
+            (tracker.debug_mode == 0)?tracker.debug_mode = 1:tracker.debug_mode = 0;
             
 			while((ch = waitKey(10)) != 32 && ch != 27);
 			if(ch == 27) break;
 		}
 	}
-    //end while
 }
 
 int main()
@@ -231,11 +152,9 @@ int main()
     cin >> data_src;
     
     VideoCapture *vc = NULL;
-    int nType = 0;
     
     if(data_src=='1')
 	{
-        nType = 1;
 		//camera (vga)
 		vc = new VideoCapture(0);
 		if (!vc->isOpened())
@@ -248,7 +167,6 @@ int main()
 	}
 	else if(data_src=='2')
 	{
-        nType = 2;
 		//camera (qvga)
 		vc = new VideoCapture(0);
 		if (!vc->isOpened())
@@ -261,7 +179,7 @@ int main()
 	}
 	else if(data_src=='3')
 	{
-        nType = 3;
+        cout << "can't open video file" << endl;
         
 		//video (avi)
 //		OPENFILENAME ofn;
@@ -280,16 +198,14 @@ int main()
 //		if(::GetOpenFileName(&ofn)==false) return 0;
 //
 		//vc = new VideoCapture("/Users/gclee/Documents/sjplabProject/objectTrackingSJPlapOne/uhd_sample.mp4");
-        vc = new VideoCapture("/Users/gclee/Documents/IMG_0793.MOV");
+        vc = new VideoCapture("/Users/gclee/Documents/sjplabProject/objectTrackingSJPlapOne/full_hd.mp4");
 		if (!vc->isOpened())
 		{
 			cout << "can't open video file" << endl;
 			return 0;
 		}
 	}
-    if(vc){
-        proc_video(vc, nType);
-    }
+	if(vc) proc_video(vc);
 	if(vc) delete vc;
 
 	destroyAllWindows();

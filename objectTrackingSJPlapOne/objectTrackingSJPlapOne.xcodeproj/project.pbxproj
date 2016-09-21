@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		28093DAD1D75369D003665D1 /* tracker_opencv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28093DAA1D75369D003665D1 /* tracker_opencv.cpp */; };
 		28093DAF1D7536E4003665D1 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28093DAE1D7536E4003665D1 /* main.cpp */; };
+		281983591D87F12E006E521C /* CMT.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281983571D87F12E006E521C /* CMT.cpp */; };
 		28CCFF681D77FB8000FB24FC /* libopencv_calib3d.2.4.13.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 28CCFF301D77FB8000FB24FC /* libopencv_calib3d.2.4.13.dylib */; };
 		28CCFF691D77FB8000FB24FC /* libopencv_calib3d.2.4.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 28CCFF311D77FB8000FB24FC /* libopencv_calib3d.2.4.dylib */; };
 		28CCFF6A1D77FB8000FB24FC /* libopencv_calib3d.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 28CCFF321D77FB8000FB24FC /* libopencv_calib3d.dylib */; };
@@ -84,6 +85,8 @@
 		28093DAA1D75369D003665D1 /* tracker_opencv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = tracker_opencv.cpp; sourceTree = "<group>"; };
 		28093DAB1D75369D003665D1 /* tracker_opencv.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tracker_opencv.h; sourceTree = "<group>"; };
 		28093DAE1D7536E4003665D1 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		281983571D87F12E006E521C /* CMT.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CMT.cpp; sourceTree = "<group>"; };
+		281983581D87F12E006E521C /* CMT.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CMT.h; sourceTree = "<group>"; };
 		282C48341D654E350095679F /* objectTrackingSJPlapOne */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = objectTrackingSJPlapOne; sourceTree = BUILT_PRODUCTS_DIR; };
 		28CCFF301D77FB8000FB24FC /* libopencv_calib3d.2.4.13.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libopencv_calib3d.2.4.13.dylib; sourceTree = "<group>"; };
 		28CCFF311D77FB8000FB24FC /* libopencv_calib3d.2.4.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libopencv_calib3d.2.4.dylib; sourceTree = "<group>"; };
@@ -233,6 +236,8 @@
 			children = (
 				28093DAA1D75369D003665D1 /* tracker_opencv.cpp */,
 				28093DAB1D75369D003665D1 /* tracker_opencv.h */,
+				281983571D87F12E006E521C /* CMT.cpp */,
+				281983581D87F12E006E521C /* CMT.h */,
 				28093DAE1D7536E4003665D1 /* main.cpp */,
 			);
 			path = objectTrackingSJPlapOne;
@@ -357,6 +362,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				281983591D87F12E006E521C /* CMT.cpp in Sources */,
 				28093DAF1D7536E4003665D1 /* main.cpp in Sources */,
 				28093DAD1D75369D003665D1 /* tracker_opencv.cpp in Sources */,
 			);

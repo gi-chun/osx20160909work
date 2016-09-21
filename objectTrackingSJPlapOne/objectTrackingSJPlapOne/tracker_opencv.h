@@ -33,7 +33,7 @@ const TermCriteria termcrit(TermCriteria::COUNT|TermCriteria::EPS,20,0.03);
 //gclee add keypoint
 const char escapeKey='k';
 const double frameCount = 0;
-const float thresholdMatchingNN=0.7;
+const float thresholdMatchingNN=0.7; //0.7->0.8 -> 0.5
 const unsigned int thresholdGoodMatches=10;
 const unsigned int thresholdGoodMatchesV[]={4,5,6,7,8,9,10};
 const int minHess=250; //2000 -> 500 -> 250
@@ -77,6 +77,7 @@ public:
     bool saveNewGoodFeature(Mat img, int init = 0);
     bool isEqualKeyPoint(Mat target, Mat source);
     Mat setRoiObjectMaskOnBackScreen(Mat* roiMat);
+    void validateROI(Rect* rec, cv::Size p);
 
 	void configure();
 	Mat get_bp_image();
