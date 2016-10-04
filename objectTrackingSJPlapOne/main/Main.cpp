@@ -30,12 +30,15 @@
 #include "Gui.h"
 #include "TLDUtil.h"
 #include "Trajectory.h"
+#include "CMT.h"
 
 using namespace tld;
 using namespace cv;
 
 void Main::doWork()
 {
+    CMT cmt;
+    
 	Trajectory trajectory;
     IplImage *img = imAcqGetImg(imAcq);
     Mat grey(img->height, img->width, CV_8UC1);
@@ -123,6 +126,14 @@ void Main::doWork()
         if(!skipProcessingOnce)
         {
             tld->processImage(cvarrToMat(img));
+            
+            //gclee
+            if(cmt_tracking){
+                cv::Mat im_gray;
+                cvtColor(cvarrToMat(img), im_gray, CV_BGR2GRAY);
+                cmt.processFrame(im_gray);
+            }
+            //gclee end
         }
         else
         {
@@ -165,7 +176,29 @@ void Main::doWork()
             CvScalar blue = CV_RGB(0, 0, 255);
             CvScalar black = CV_RGB(0, 0, 0);
             CvScalar white = CV_RGB(255, 255, 255);
-
+            
+            //gclee
+            //if(tld->currBB == NULL){
+                
+                if(cmt.hasResult){
+//                    for(int i = 0; i<cmt.trackedKeypoints.size(); i++)
+//                        cvCircle(img, cmt.trackedKeypoints[i].first.pt, 3, cv::Scalar(255,255,255));
+                    
+                    cvRectangle(img, cmt.boundingbox.tl(), cmt.boundingbox.br(), Scalar(0,0,255), 1, 4);
+                    
+                    //draw some crosshairs around the object
+//                    int x, y = 0;
+//                    x = cmt.boundingbox.x+cmt.boundingbox.width/2;
+//                    y = cmt.boundingbox.y+cmt.boundingbox.height/2;
+//                    cvCircle(img,Point(x,y),10,Scalar(0,255,0),1);
+//                    cvLine(img,Point(x,y),Point(x,y-15),Scalar(0,255,0),1);
+//                    cvLine(img,Point(x,y),Point(x,y+15),Scalar(0,255,0),1);
+//                    cvLine(img,Point(x,y),Point(x-15,y),Scalar(0,255,0),1);
+//                    cvLine(img,Point(x,y),Point(x+15,y),Scalar(0,255,0),1);
+                }
+                
+            //gclee end
+            
             if(tld->currBB != NULL)
             {
                 CvScalar rectangleColor = (confident) ? blue : yellow;
@@ -194,8 +227,9 @@ void Main::doWork()
             cvRectangle(img, cvPoint(0, 0), cvPoint(img->width, 50), black, CV_FILLED, 8, 0);
             cvPutText(img, string, cvPoint(25, 25), &font, white);
 
-            if(showForeground)
-            {
+            //gclee test
+//            if(showForeground)
+//            {
 
                 for(size_t i = 0; i < tld->detectorCascade->detectionResult->fgList->size(); i++)
                 {
@@ -203,7 +237,8 @@ void Main::doWork()
                     cvRectangle(img, r.tl(), r.br(), white, 1);
                 }
 
-            }
+//            }
+            //gclee end
 
 
             if(showOutput)
@@ -232,6 +267,9 @@ void Main::doWork()
                 {
                     //clear everything
                     tld->release();
+                    //gclee
+                    cmt_tracking = false;
+                    //gclee end
                 }
 
                 if(key == 'l')
@@ -268,6 +306,12 @@ void Main::doWork()
                     Rect r = Rect(box);
 
                     tld->selectObject(grey, &r);
+                    //gclee
+                    //cmt tracket init
+                    cv::Point2f initTopLeft(r.x, r.y);
+                    cv::Point2f initBottomDown(r.x+r.width,r.y+r.height);
+                    cmt_tracking = cmt.initialise(grey, initTopLeft, initBottomDown);
+                    
                 }
             }
 

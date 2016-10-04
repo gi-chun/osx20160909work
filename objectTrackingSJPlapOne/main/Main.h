@@ -59,6 +59,7 @@ public:
     const char *modelPath;
     const char *modelExportFile;
     int seed;
+    bool cmt_tracking;
 
     Main()
     {
@@ -88,6 +89,8 @@ public:
         gui = NULL;
         modelPath = NULL;
         imAcq = NULL;
+        
+        cmt_tracking = false;
     }
 
     ~Main()

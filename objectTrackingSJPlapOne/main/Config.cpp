@@ -444,7 +444,9 @@ int Config::configure(Main *main)
     // main
     main->tld->trackerEnabled = m_settings.m_trackerEnabled;
     main->showOutput = m_settings.m_showOutput;
-	main->showTrajectory = (m_settings.m_trajectory) ? true : false;
+    //gclee
+//	main->showTrajectory = (m_settings.m_trajectory) ? true : false;
+    main->showTrajectory =  true;
 	main->trajectoryLength = m_settings.m_trajectory;
     main->printResults = (m_settings.m_printResults.empty()) ? NULL : m_settings.m_printResults.c_str();
     main->saveDir = (m_settings.m_outputDir.empty()) ? NULL : m_settings.m_outputDir.c_str();
