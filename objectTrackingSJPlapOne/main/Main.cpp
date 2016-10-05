@@ -181,20 +181,20 @@ void Main::doWork()
             //if(tld->currBB == NULL){
                 
                 if(cmt.hasResult){
-//                    for(int i = 0; i<cmt.trackedKeypoints.size(); i++)
-//                        cvCircle(img, cmt.trackedKeypoints[i].first.pt, 3, cv::Scalar(255,255,255));
+                    for(int i = 0; i<cmt.trackedKeypoints.size(); i++)
+                        cvCircle(img, cmt.trackedKeypoints[i].first.pt, 3, cv::Scalar(255,255,255));
                     
                     cvRectangle(img, cmt.boundingbox.tl(), cmt.boundingbox.br(), Scalar(0,0,255), 1, 4);
                     
                     //draw some crosshairs around the object
-//                    int x, y = 0;
-//                    x = cmt.boundingbox.x+cmt.boundingbox.width/2;
-//                    y = cmt.boundingbox.y+cmt.boundingbox.height/2;
-//                    cvCircle(img,Point(x,y),10,Scalar(0,255,0),1);
-//                    cvLine(img,Point(x,y),Point(x,y-15),Scalar(0,255,0),1);
-//                    cvLine(img,Point(x,y),Point(x,y+15),Scalar(0,255,0),1);
-//                    cvLine(img,Point(x,y),Point(x-15,y),Scalar(0,255,0),1);
-//                    cvLine(img,Point(x,y),Point(x+15,y),Scalar(0,255,0),1);
+                    int x, y = 0;
+                    x = cmt.boundingbox.x+cmt.boundingbox.width/2;
+                    y = cmt.boundingbox.y+cmt.boundingbox.height/2;
+                    cvCircle(img,Point(x,y),10,Scalar(0,255,0),1);
+                    cvLine(img,Point(x,y),Point(x,y-15),Scalar(0,255,0),1);
+                    cvLine(img,Point(x,y),Point(x,y+15),Scalar(0,255,0),1);
+                    cvLine(img,Point(x,y),Point(x-15,y),Scalar(0,255,0),1);
+                    cvLine(img,Point(x,y),Point(x+15,y),Scalar(0,255,0),1);
                 }
                 
             //gclee end
