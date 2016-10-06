@@ -63,36 +63,36 @@
     //self.window.rootViewController = mainViewCnr;
     
     //set status bar
-    [application setStatusBarHidden:NO];
+    //[application setStatusBarHidden:NO];
     [application setStatusBarStyle:UIStatusBarStyleLightContent];
     //set status bar end
     
 //    // set navigaton ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Uncomment to change the background color of navigation bar
-    [[UINavigationBar appearance] setBarTintColor:UIColorFromRGBA(0x067AB5, 1.0)];
+    [[UINavigationBar appearance] setBarTintColor:UIColorFromRGBA(0xcccccc, 1.0)]; //0x067AB5
     // Uncomment to change the color of back button
     [[UINavigationBar appearance] setTintColor:[UIColor whiteColor]];
     // Uncomment to assign a custom backgroung image
-    [[UINavigationBar appearance] setBackgroundImage:[UIImage imageNamed:@"nav_bg_ios7.png"] forBarMetrics:UIBarMetricsDefault];
+    //[[UINavigationBar appearance] setBackgroundImage:[UIImage imageNamed:@"nav_bg_ios7.png"] forBarMetrics:UIBarMetricsDefault];
     // Uncomment to change the back indicator image
-    [[UINavigationBar appearance] setBackIndicatorImage:[UIImage imageNamed:@"back_btn.png"]];
-    [[UINavigationBar appearance] setBackIndicatorTransitionMaskImage:[UIImage imageNamed:@"back_btn.png"]];
-    // Uncomment to change the font style of the title
-    NSShadow *shadow = [[NSShadow alloc] init];
-    shadow.shadowColor = [UIColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:0.8];
-    shadow.shadowOffset = CGSizeMake(0, 1);
+    //[[UINavigationBar appearance] setBackIndicatorImage:[UIImage imageNamed:@"back_btn.png"]];
+    //[[UINavigationBar appearance] setBackIndicatorTransitionMaskImage:[UIImage imageNamed:@"back_btn.png"]];
     
+    // Uncomment to change the font style of the title
+//    NSShadow *shadow = [[NSShadow alloc] init];
+//    shadow.shadowColor = [UIColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:0.8];
+//    shadow.shadowOffset = CGSizeMake(0, 1);
+//    
 //    [[UINavigationBar appearance] setTitleTextAttributes: [NSDictionary dictionaryWithObjectsAndKeys:
 //                                                           [UIColor colorWithRed:245.0/255.0 green:245.0/255.0 blue:245.0/255.0 alpha:1.0], NSForegroundColorAttributeName,
 //                                                           shadow, NSShadowAttributeName,
 //                                                           [UIFont fontWithName:@"HelveticaNeue-CondensedBlack" size:21.0], NSFontAttributeName, nil]];
-    
-    [[UINavigationBar appearance] setTitleTextAttributes: [NSDictionary dictionaryWithObjectsAndKeys:
-                                                           [UIColor colorWithRed:245.0/255.0 green:245.0/255.0 blue:245.0/255.0 alpha:1.0], NSForegroundColorAttributeName,
-                                                           nil, NSShadowAttributeName,
-                                                           [UIFont fontWithName:@"HelveticaNeue-CondensedBlack" size:21.0], NSFontAttributeName, nil]];
-    //
-    
+//    
+//    [[UINavigationBar appearance] setTitleTextAttributes: [NSDictionary dictionaryWithObjectsAndKeys:
+//                                                           [UIColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:1.0], NSForegroundColorAttributeName,
+//                                                           nil, nil,
+//                                                           [UIFont fontWithName:@"HelveticaNeue-CondensedBlack" size:21.0], NSFontAttributeName, nil]];
+//    
 //    // set navigation end ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////

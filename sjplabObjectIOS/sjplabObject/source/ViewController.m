@@ -88,18 +88,20 @@ typedef NS_ENUM(NSUInteger, MenuTags) {
     // Uncomment to display a logo as the navigation bar title
     // self.navigationItem.titleView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"appcoda-logo.png"]];
     
-    self.title = @"SJPLab\nObjectTracking";
+    self.title = @"SJPLab ObjectTracking";
     
-    UILabel *updateTimeLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 100, 26)];
+    UILabel *updateTimeLabel = [[UILabel alloc] initWithFrame:CGRectMake(100, 100, 100, 26)];
     [updateTimeLabel setBackgroundColor:[UIColor clearColor]];
-    [updateTimeLabel setTextColor:UIColorFromRGB(0x8c6239)];
+    [updateTimeLabel setTextColor:UIColorFromRGB(0x000000)]; //0x8c6239
     [updateTimeLabel setFont:[UIFont fontWithName:@"Helvetica-Bold" size:13]];
     [updateTimeLabel setShadowColor:[UIColor whiteColor]];
     [updateTimeLabel setShadowOffset:CGSizeMake(0,2)];
     [updateTimeLabel setText:@"test test test gclee"];
     [updateTimeLabel setTextAlignment:NSTextAlignmentCenter];
     [self.view addSubview:updateTimeLabel];
-
+    
+    [self.view setBackgroundColor:UIColorFromRGBA(0xcccccc, 1.0f) ];
+    
     
 //gclee
 //#define Appdelegate (((AppDelegate *)[[UIApplication sharedApplication] delegate]))

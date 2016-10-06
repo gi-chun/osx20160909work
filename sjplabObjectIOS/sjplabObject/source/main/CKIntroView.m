@@ -31,7 +31,6 @@
 //    UIImageView *containerView;
 //    UIWebView *aWebview;
     UIView *backView;
-    UIView *containerView;
     UIView *headerView;
     UIScrollView *leftVerticalView;
     UIScrollView *CenterHorizontalView;
@@ -97,70 +96,40 @@
     backView.backgroundColor = [UIColor clearColor];
     backView.userInteractionEnabled = YES;
     backView.backgroundColor = [UIColor colorWithWhite:0 alpha:0.2];
-    backView.alpha = 0.2;
+    //backView.alpha = 0.2;
     
-    UITapGestureRecognizer *buttonTap = [[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(handleTap:)];
-    buttonTap.cancelsTouchesInView = NO;
-    [backView addGestureRecognizer:buttonTap];
+//    UITapGestureRecognizer *buttonTap = [[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(handleTap:)];
+//    buttonTap.cancelsTouchesInView = NO;
+//    [backView addGestureRecognizer:buttonTap];
     [self addSubview:backView];
+ 
+    //UIImage *backgroundImage = [[UIImage imageNamed:@"sample.jpg"] resizableImageWithCapInsets:UIEdgeInsetsMake(10, 10, 10, 10)];
+    UIImage *backgroundImage = [UIImage imageNamed:@"sample.jpg"];
     
-    CGFloat height = 150;
-    CGFloat width = 150;
+    UIImageView *contentView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, kScreenBoundsWidth, kScreenBoundsHeight)];
+    [contentView setUserInteractionEnabled:YES];
+    [contentView setImage:backgroundImage];
+    [backView addSubview:contentView];
+
+    UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(17, 0, kScreenBoundsWidth-42, 42)];
+    [titleLabel setText:@"test test"];
+    [titleLabel setFont:[UIFont boldSystemFontOfSize:15]];
+    [titleLabel setTextColor:UIColorFromRGB(0x333333)];
+    [titleLabel setBackgroundColor:[UIColor clearColor]];
+    [backView addSubview:titleLabel];
     
-    UIImage *iconImage1 = [UIImage imageNamed:@"twitter-icon.png"];
-    UIImage *iconImage2 = [UIImage imageNamed:@"google-icon.png"];
-    UIImage *iconImage3 = [UIImage imageNamed:@"fb-icon.png"];
-    UIImage *iconImage4 = [UIImage imageNamed:@"linkedin-icon.png"];
-    UIImage *iconImage5 = [UIImage imageNamed:@"twitter-icon.png"];
-    UIImage *iconImage6 = [UIImage imageNamed:@"google-icon.png"];
+    UIButton *closeButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    [closeButton setFrame:CGRectMake(50, 100, 100, 100)];
+    [closeButton setImage:[UIImage imageNamed:@"google-icon.png"] forState:UIControlStateNormal];
+    [closeButton addTarget:self action:@selector(handleButton) forControlEvents:UIControlEventTouchUpInside];
+    [backView addSubview:closeButton];
     
-    introView = [[UIImageView alloc] initWithFrame:CGRectMake((kScreenBoundsWidth-width)/2, (kScreenBoundsHeight-height)/2, width, height)];
-    [self addSubview:introView];
+    [NSTimer scheduledTimerWithTimeInterval:3.0 target:self selector:@selector(handleButton) userInfo:@1 repeats:NO];
     
-    introView.animationImages = [NSArray arrayWithObjects:
-                                   iconImage1,
-                                   iconImage2,
-                                   iconImage3,
-                                   iconImage4,
-                                   iconImage5,
-                                   iconImage6, nil];
-    
-    introView.animationDuration = 1.0f;
-    introView.animationRepeatCount = 0;
-    
-    [self addSubview:introView];
-    
-//      containerView =
-    
-//    UIImage *backgroundImage = [[UIImage imageNamed:@"layer_pd_popup_bg.png"] resizableImageWithCapInsets:UIEdgeInsetsMake(10, 10, 10, 10)];
-//    
-//    UIImageView *contentView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, kScreenBoundsWidth, kScreenBoundsHeight)];
-//    [contentView setUserInteractionEnabled:YES];
-//    [self addSubview:contentView];
-//    
-//    containerView = [[UIImageView alloc] initWithFrame:CGRectMake(13.5f, 0, CGRectGetWidth(self.frame)-27, 260)];
-//    [containerView setCenter:CGPointMake(kScreenBoundsWidth/2, kScreenBoundsHeight/2)];
-//    [containerView setImage:backgroundImage];
-//    [containerView setUserInteractionEnabled:YES];
-//    [contentView addSubview:containerView];
-//    
-//    UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(17, 0, kScreenBoundsWidth-42, 42)];
-//    [titleLabel setText:title];
-//    [titleLabel setFont:[UIFont boldSystemFontOfSize:15]];
-//    [titleLabel setTextColor:UIColorFromRGB(0x333333)];
-//    [titleLabel setBackgroundColor:[UIColor clearColor]];
-//    [containerView addSubview:titleLabel];
-//    
-//    UIButton *closeButton = [UIButton buttonWithType:UIButtonTypeCustom];
-//    [closeButton setFrame:CGRectMake(CGRectGetWidth(containerView.frame)-42, 0, 42, 42)];
-//    [closeButton setImage:[UIImage imageNamed:@"ic_pd_popup_close.png"] forState:UIControlStateNormal];
-//    [closeButton addTarget:self action:@selector(touchCloseButton) forControlEvents:UIControlEventTouchUpInside];
-//    [containerView addSubview:closeButton];
-//    
 //    UIView *lineView = [[UIView alloc] initWithFrame:CGRectMake(2, 41, CGRectGetWidth(self.frame)-31, 1)];
 //    [lineView setBackgroundColor:UIColorFromRGBA(0xafb0c2, 0.3f)];
 //    [containerView addSubview:lineView];
-//    
+    
 //    aWebview = [[UIWebView alloc] initWithFrame:CGRectMake(2.5f, CGRectGetMaxY(lineView.frame), containerView.frame.size.width-5.f, 0)];
 //    aWebview.delegate = self;
 //    aWebview.clipsToBounds = NO;
@@ -172,6 +141,12 @@
 
 -(void)handleTap:(id)sender //close view
 {
+    [self.delegate touchIntroDissmisView];
+}
+
+-(void)handleButton //close view
+{
+    NSLog(@"intro close button click");
     [self.delegate touchIntroDissmisView];
 }
 
